@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#050914;color:#eafaff;font-family:Arial;display:flex;align-items:center;justify-content:center;padding:15px}
+.app{width:100%;max-width:650px;text-align:center;background:#101b2c;border:1px solid #174c66;border-radius:25px;padding:25px;box-shadow:0 0 35px #00cfff22}
+h1{color:#42e8ff;letter-spacing:7px;margin:5px}
+.sub{color:#8baaba;font-size:13px}
+.face{width:190px;height:145px;border:3px solid #36dcff;border-radius:48%;margin:25px auto;box-shadow:0 0 25px #00d9ff66;display:flex;align-items:center;justify-content:center;gap:35px;position:relative}
+.eye{width:24px;height:30px;background:#47edff;border-radius:50%;box-shadow:0 0 15px #00dfff}
+.mouth{position:absolute;bottom:30px;width:45px;height:9px;border-bottom:4px solid #47edff;border-radius:50%}
+.listening .face{animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 45px #00eaff}}
+#status{color:#42e8ff;min-height:25px;font-size:14px}
+#answer{background:#071321;border-radius:15px;padding:17px;min-height:90px;text-align:left;line-height:1.5;margin:15px 0;white-space:pre-wrap}
+input{width:100%;padding:15px;border-radius:12px;border:1px solid #26758b;background:#071321;color:white;font-size:16px;outline:none}
+.buttons{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+button{flex:1;min-width:90px;padding:13px;border:0;border-radius:12px;background:#13b8d7;color:#00131b;font-weight:bold;font-size:14px;cursor:pointer}
+button:hover{background:#65eaff}
+.mic{background:#b5f4ff}.stop{background:#ff647c}
+.small{font-size:12px;color:#829eac;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<h1>AURA</h1>
+<div class="sub">YOUR VOICE CONTROLLED VIRTUAL ASSISTANT</div>
+<div class="face"><div class="eye"></div><div class="eye"></div><div class="mouth"></div></div>
+<div id="status">SYSTEM ONLINE • READY</div>
+<div id="answer">Hello! I am AURA. Ask me a question or give me a command.</div>
+<input id="question" placeholder="Type your question here...">
+<div class="buttons">
+<button onclick="send()">SEND</button>
+<button class="mic" onclick="listen()">🎤 SPEAK</button>
+<button class="stop" onclick="stopSpeaking()">STOP</button>
+</div>
+<div class="small">Try: "Define impulse" • "What is mole concept?" • "What is a function?" • "Calculate 25 times 4"</div>
+</div>
+
+<script>
+const input=document.getElementById("question");
+const answer=document.getElementById("answer");
+const statusText=document.getElementById("status");
+const app=document.getElementById("app");
+
+function speak(text){
+ speechSynthesis.cancel();
+ const msg=new SpeechSynthesisUtterance(text);
+ msg.lang="en-IN";
+ msg.rate=1;
+ speechSynthesis.speak(msg);
+}
+function reply(text){
+ answer.textContent=text;
+ statusText.textContent="AURA IS RESPONDING";
+ speak(text);
+}
+
+function calculate(q){
+ let s=q.toLowerCase()
+ .replace(/what is|calculate|solve|equals|equal to/g,"")
+ .replace(/plus/g,"+").replace(/minus/g,"-")
+ .replace(/multiplied by|times/g,"*")
+ .replace(/divided by/g,"/");
+ if(!/^[0-9+\-*/().%\s]+$/.test(s))return null;
+ try{
+  let tokens=s.match(/\d+(?:\.\d+)?|[()+\-*/%]/g);
+  if(!tokens||tokens.join("")!==s.replace(/\s/g,""))return null;
+  let i=0;
+  function expression(){
+   let v=term();
+   while(tokens[i]==="+"||tokens[i]==="-"){
+    let op=tokens[i++],n=term();
+    v=op==="+"?v+n:v-n;
+   }
+   return v;
+  }
+  function term(){
+   let v=factor();
+   while(["*","/","%"].includes(tokens[i])){
+    let op=tokens[i++],n=factor();
+    if((op==="/"||op==="%")&&n===0)throw Error();
+    v=op==="*"?v*n:op==="/"?v/n:v%n;
+   }
+   return v;
+  }
+  function factor(){
+   if(tokens[i]==="+"){i++;return factor()}
+   if(tokens[i]==="-"){i++;return -factor()}
+   if(tokens[i]==="("){
+    i++;let v=expression();
+    if(tokens[i++]!==")")throw Error();
+    return v;
+   }
+   let n=Number(tokens[i++]);
+   if(!Number.isFinite(n))throw Error();
+   return n;
+  }
+  let result=expression();
+  if(i!==tokens.length||!Number.isFinite(result))return null;
+  return "The answer is "+result;
+ }catch(e){return null}
+}
+
+const knowledge=[
+// PHYSICS
+[/centre of mass|center of mass|\bcom\b/,"The centre of mass is the point at which the entire mass of a system may be considered to be concentrated. For two particles, R equals (m1 r1 plus m2 r2) divided by (m1 plus m2)."],
+[/parallelogram law/,"The parallelogram law states that if two vectors acting at a point are represented by the two adjacent sides of a parallelogram, their resultant is represented by the diagonal passing through that point."],
+[/triangle law of vectors/,"According to the triangle law, if two vectors are represented in magnitude and direction by two sides of a triangle taken in order, their resultant is represented by the third side taken in the opposite order."],
+[/impulse/,"Impulse is the product of force and the time interval for which it acts. Impulse equals change in momentum. SI unit is newton second."],
+[/projectile motion/,"Projectile motion is the motion of an object projected into the air under the effect of gravity alone, neglecting air resistance."],
+[/gravitational constant|law of gravitation|gravitation/,"Newton's universal law of gravitation states that every particle attracts every other particle with a force directly proportional to the product of their masses and inversely proportional to the square of the distance between them. F equals G m1 m2 divided by r squared."],
+[/newton.*first law|first law of motion/,"Newton's first law states that an object remains at rest or in uniform motion in a straight line unless acted upon by an external unbalanced force."],
+[/newton.*second law|second law of motion/,"Newton's second law states that the rate of change of momentum is directly proportional to the applied force and takes place in its direction. For constant mass, F equals m a."],
+[/newton.*third law|third law of motion/,"Newton's third law states that for every action, there is an equal and opposite reaction."],
+[/angular momentum/,"Angular momentum is the moment of linear momentum. L equals r cross p. SI unit is kilogram metre squared per second."],
+[/torque/,"Torque is the turning effect of a force. Its formula is tau equals r cross F. SI unit is newton metre."],
+[/moment of inertia/,"Moment of inertia is the rotational analogue of mass. I equals the sum of m r squared. SI unit is kilogram metre squared."],
+[/conservation of momentum|principle of momentum/,"The principle of conservation of momentum states that the total momentum of an isolated system remains constant if no external force acts on it."],
+[/velocity/,"Velocity is the rate of change of displacement with time. SI unit is metre per second."],
+[/acceleration/,"Acceleration is the rate of change of velocity with time. SI unit is metre per second squared."],
+[/work\b/,"Work is done when a force produces displacement. W equals F s cos theta. SI unit is joule."],
+[/power/,"Power is the rate of doing work. P equals W divided by t. SI unit is watt."],
+[/kinetic energy/,"Kinetic energy is the energy possessed by a body due to its motion. K equals half m v squared."],
+[/potential energy/,"Potential energy is the energy possessed by a body due to its position or configuration. Gravitational potential energy near Earth's surface is m g h."],
+[/dimensional formula/,"A dimensional formula expresses a physical quantity in terms of fundamental quantities such as mass, length and time."],
+[/uniform circular motion/,"Uniform circular motion is the motion of an object along a circular path with constant speed. Its velocity direction changes continuously."],
+
+// CHEMISTRY
+[/mole concept|what is a mole/,"A mole is the amount of substance that contains exactly 6.02214076 times 10 to the power 23 elementary entities. This number is called the Avogadro constant."],
+[/avogadro.s law|avogadro law/,"Avogadro's law states that equal volumes of all gases at the same temperature and pressure contain equal numbers of molecules."],
+[/atomic number/,"Atomic number is the number of protons present in the nucleus of an atom. It is represented by Z."],
+[/mass number/,"Mass number is the total number of protons and neutrons present in the nucleus of an atom. It is represented by A."],
+[/isotop/,"Isotopes are atoms of the same element having the same atomic number but different mass numbers."],
+[/isobar/,"Isobars are atoms of different elements having the same mass number but different atomic numbers."],
+[/isoton/,"Isotones are atoms of different elements having the same number of neutrons."],
+[/periodic table/,"The modern periodic table arranges elements in increasing order of atomic number. It contains 7 periods and 18 groups."],
+[/chemical bond/,"A chemical bond is the force of attraction that holds atoms or ions together in a compound."],
+[/ionic bond/,"An ionic bond is formed by the transfer of electrons from one atom to another, resulting in oppositely charged ions."],
+[/covalent bond/,"A covalent bond is formed when atoms share one or more pairs of electrons."],
+[/oxidation/,"Oxidation is the loss of electrons or an increase in oxidation number."],
+[/reduction/,"Reduction is the gain of electrons or a decrease in oxidation number."],
+[/ph\b|ph scale/,"The pH scale measures how acidic or basic a solution is. At 25 degrees Celsius, pH 7 is neutral, below 7 is acidic and above 7 is basic."],
+[/atomic mass/,"Atomic mass is the mass of an atom, usually expressed in unified atomic mass units."],
+[/molar mass/,"Molar mass is the mass of one mole of a substance. Its common unit is gram per mole."],
+[/limiting reagent/,"The limiting reagent is the reactant that is completely consumed first in a chemical reaction and limits the amount of product formed."],
+[/ideal gas equation|gas equation/,"The ideal gas equation is PV equals nRT, where P is pressure, V is volume, n is number of moles, R is the gas constant and T is temperature."],
+[/electronegativity/,"Electronegativity is the tendency of an atom in a molecule to attract the shared pair of electrons towards itself."],
+[/hydrogen bond/,"A hydrogen bond is an attractive interaction involving a hydrogen atom bonded to a highly electronegative atom and another electronegative atom."],
+
+// MATHEMATICS
+[/quadratic equation/,"A quadratic equation is an equation of the form a x squared plus b x plus c equals zero, where a is not equal to zero. Its roots are given by x equals minus b plus or minus square root of b squared minus 4ac, divided by 2a."],
+[/complex number/,"A complex number is a number of the form a plus ib, where a and b are real numbers and i squared equals minus one."],
+[/what is a function|define a function/,"A function is a relation in which every element of the domain is associated with exactly one element of the codomain."],
+[/matrix/,"A matrix is a rectangular arrangement of numbers or elements in rows and columns."],
+[/trigonometric identit/,"Some basic trigonometric identities are sin squared theta plus cos squared theta equals 1, 1 plus tan squared theta equals sec squared theta, and 1 plus cot squared theta equals cosec squared theta."],
+[/set theory|what is a set/,"A set is a well-defined collection of distinct objects. The objects are called elements of the set."],
+[/arithmetic progression|\bap\b/,"An arithmetic progression is a sequence in which the difference between consecutive terms is constant. The nth term is a plus (n minus 1)d."],
+[/geometric progression|\bgp\b/,"A geometric progression is a sequence in which the ratio between consecutive non-zero terms is constant."],
+[/permutation/,"Permutation is an arrangement of objects in a definite order. The number of permutations of n objects taken r at a time is n factorial divided by (n minus r) factorial."],
+[/combination/,"Combination is a selection of objects where order does not matter. nCr equals n factorial divided by r factorial times (n minus r) factorial."],
+[/probability/,"Probability is the measure of the likelihood of an event. For equally likely outcomes, probability equals favourable outcomes divided by total outcomes."],
+[/binomial theorem/,"The binomial theorem gives the expansion of a binomial raised to a positive integer power. It is written as (x plus y) to the power n equals the sum of nCr times x to the power n minus r times y to the power r."],
+[/coordinate geometry/,"Coordinate geometry uses coordinates to study geometrical shapes and their properties using algebra."],
+[/distance formula/,"The distance between two points (x1,y1) and (x2,y2) is the square root of (x2 minus x1) squared plus (y2 minus y1) squared."],
+[/slope of a line/,"The slope of a line is the ratio of change in y-coordinate to change in x-coordinate. m equals (y2 minus y1) divided by (x2 minus x1)."],
+
+// COMPUTER SCIENCE
+[/python|programming language/,"Python is a high-level, interpreted, general-purpose programming language known for its simple syntax."],
+[/machine learning/,"Machine learning is a branch of artificial intelligence that enables computers to learn patterns from data."],
+[/artificial intelligence|\bai\b/,"Artificial intelligence is the ability of machines to perform tasks that normally require human intelligence, such as learning and problem solving."],
+[/dictionary in python/,"A dictionary in Python is a mutable collection of key-value pairs. It is written using curly brackets."],
+[/for loop|while loop|loop in python/,"A loop is used to execute a block of code repeatedly. Python has for loops and while loops."]
+];
+
+function processCommand(raw){
+ const q=raw.toLowerCase().trim();
+ if(!q)return "Please ask me something.";
+
+ if(q.includes("open youtube")){
+  window.open("https://www.youtube.com","_blank");
+  return "Opening YouTube.";
+ }
+ if(q.includes("open google")){
+  window.open("https://www.google.com","_blank");
+  return "Opening Google.";
+ }
+ if(q.startsWith("search for ")||q.startsWith("search google for ")){
+  let term=q.replace("search google for ","").replace("search for ","");
+  window.open("https://www.google.com/search?q="+encodeURIComponent(term),"_blank");
+  return "Searching Google for "+term;
+ }
+ if(q.includes("time")||q.includes("clock"))
+  return "The current time is "+new Date().toLocaleTimeString("en-IN");
+ if(q.includes("date")||q.includes("today"))
+  return "Today's date is "+new Date().toLocaleDateString("en-IN",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+ if(q.includes("your name")||q.includes("who are you"))
+  return "I am AURA, your virtual assistant.";
+ if(q.includes("who created you"))
+  return "I was created as a student virtual assistant project.";
+ if(q.includes("hello")||q==="hi"||q.includes("hi aura"))
+  return "Hello! How can I help you today?";
+ if(q.includes("how are you"))
+  return "I am functioning perfectly. Thank you for asking!";
+ if(q.includes("thank"))
+  return "You're welcome! I am ready to help.";
+ if(q.includes("bye"))
+  return "Goodbye! Have a wonderful day.";
+
+ const math=calculate(q);
+ if(math!==null)return math;
+
+ for(const [pattern,response] of knowledge){
+  if(pattern.test(q))return response;
+ }
+ return "I don't have a programmed answer for that question yet. Try another Class 11 Physics, Chemistry, Maths or Computer Science question.";
+}
+
+function send(){
+ const q=input.value.trim();
+ if(!q)return;
+ statusText.textContent="PROCESSING...";
+ const result=processCommand(q);
+ reply(result);
+ input.value="";
+}
+input.addEventListener("keydown",e=>{if(e.key==="Enter")send()});
+
+function listen(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){reply("Speech recognition is not supported. Please use Google Chrome.");return;}
+ const recognition=new SR();
+ recognition.lang="en-IN";
+ recognition.interimResults=true;
+ recognition.maxAlternatives=1;
+ recognition.onstart=()=>{
+  app.classList.add("listening");
+  statusText.textContent="LISTENING... SPEAK NOW";
+ };
+ recognition.onresult=e=>{
+  let transcript="";
+  for(let i=e.resultIndex;i<e.results.length;i++)transcript+=e.results[i][0].transcript;
+  input.value=transcript;
+  statusText.textContent="I HEARD: "+transcript;
+  if(e.results[e.results.length-1].isFinal)setTimeout(send,300);
+ };
+ recognition.onerror=e=>statusText.textContent="MICROPHONE ERROR: "+e.error;
+ recognition.onend=()=>{
+  app.classList.remove("listening");
+  if(statusText.textContent.startsWith("LISTENING"))statusText.textContent="READY";
+ };
+ recognition.start();
+}
+function stopSpeaking(){
+ speechSynthesis.cancel();
+ statusText.textContent="SPEECH STOPPED";
+}
+</script>
+</body>
+</html>
